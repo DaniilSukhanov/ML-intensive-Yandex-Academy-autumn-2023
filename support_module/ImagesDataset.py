@@ -1,76 +1,63 @@
-import numpy as np
+import os
+import torch
 from torch.utils.data import Dataset
 from PIL import Image
-import pathlib
-from typing import Union, Optional, TypeAlias
-import csv
+import pandas as pd
+from torchvision import transforms
 
+class ImageToImageDataset(Dataset):
+    def __init__(self, input_dir, target_dir=None, transform=None, mode='train'):
+        self.input_dir = input_dir
+        self.target_dir = target_dir
+        self.transform = transform
+        self.mode = mode
 
-NPImage: TypeAlias = np.ndarray[np.ndarray[float]]
+        self.filenames = [f for f in os.listdir(input_dir) if f.endswith('.png')]
 
+    def __len__(self):
+        return len(self.filenames)
 
-class ImagesDataset(Dataset):
-    """
-    Датасет для работы с изображениями в качестве данных для обучения.
+    def __getitem__(self, idx):
+        input_path = os.path.join(self.input_dir, self.filenames[idx])
+        input_image = Image.open(input_path).convert('L')  
 
-    :param path_directory_images: Путь к папке с изображениями для обучения.
-    :param path_answers: Путь к файлу с ответами (необязательный).
-    """
-    __path_images: Optional[list[pathlib.Path]]
-    __answer: Optional[Union[tuple[float], list[pathlib.Path]]]
+        if self.transform:
+            input_image = self.transform(input_image)
 
-    def __init__(
-            self, path_directory_images: Union[str, pathlib.Path],
-            path_answers: Optional[Union[str, pathlib.Path]] = None
-    ):
-        if type(path_directory_images) is str:
-            path_directory_images = pathlib.Path(path_directory_images)
-        path_directory_images: pathlib.Path
-        # Загрузка изображений и их сортировка
-        self.__path_images = list(path_directory_images.glob("*.png"))
-        self.__path_images.sort(key=ImagesDataset.__get_index)
+        if self.mode == 'train':
+            target_path = os.path.join(self.target_dir, self.filenames[idx])
+            target_image = Image.open(target_path).convert('L')
 
-        if path_answers is not None and type(path_answers) is str:
-            path_answers = pathlib.Path(path_answers)
-        path_answers: Optional[pathlib.Path]
-        if path_answers is None:
-            self.__answer = None
-        elif path_answers.is_file():
-            # Если есть файл с ответами, считываем их из CSV
-            with open(path_answers) as file:
-                reader = csv.reader(file, delimiter=",")
-                next(reader)
-                self.__answer = tuple(float(row[1]) for row in reader)
+            return input_image, target_image
         else:
-            # Если ответы - это изображения, сортируем их
-            self.__answer = list(path_answers.glob("*.png"))
-            self.__answer.sort(key=ImagesDataset.__get_index)
+            return input_image
 
-    def __len__(self) -> int:
-        return len(self.__path_images)
+class ImageToNumDataset(Dataset):
+    def __init__(self, img_dir, transform=None, answers_file=None):
+        self.img_dir = img_dir
+        self.transform = transform
+        self.answers_file = answers_file
 
-    def __getitem__(
-        self, index: int
-    ) -> tuple[np.ndarray[np.ndarray[float]], Optional[Union[float, NPImage]]]:
-        # Получаем изображение и соответствующий ответ по индексу
-        images_path = self.__path_images[index]
-        with Image.open(images_path) as image:
-            # Преобразуем изображение в массив numpy и нормализуем его
-            data_image = np.array(image, dtype=np.float64)
-            data_image /= 256.0
-        if self.__answer is None:
-            answer = None
+        if self.answers_file is not None:
+            self.img_labels = pd.read_csv(answers_file)
         else:
-            answer = self.__answer[index]
-            if type(answer) is pathlib.PosixPath:
-                with Image.open(answer) as image:
-                    # Преобразуем изображение в массив numpy и нормализуем его
-                    answer = np.array(image, dtype=np.float64)
-                    answer /= 256.0
-        return data_image, answer
+            self.img_labels = None
+        
+        self.image_filenames = [file for file in os.listdir(img_dir) if file.endswith('.png')]
 
-    @staticmethod
-    def __get_index(filename: pathlib.Path) -> int:
-        """Вспомогательный метод для извлечения индекса из имени файла"""
-        return int(filename.name.split(".")[0].replace("img_", "", 1))
+    def __len__(self):
+        return len(self.image_filenames)
 
+    def __getitem__(self, idx):
+        img_name = self.image_filenames[idx]
+        img_path = os.path.join(self.img_dir, img_name)
+        image = Image.open(img_path).convert("L")
+
+        if self.transform:
+            image = self.transform(image)
+
+        if self.img_labels is not None:
+            label = self.img_labels.iloc[idx, 1]
+            return image, label
+        else:
+            return image
