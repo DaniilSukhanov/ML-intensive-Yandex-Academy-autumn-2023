@@ -1,5 +1,6 @@
 from torch import nn
 import logging
+import datetime
 
 
 class NoMaskModel(nn.Module):
@@ -27,19 +28,16 @@ class NoMaskModel(nn.Module):
         self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1)
 
         self.relu = nn.ReLU()
-        self.input_liner = nn.Linear(32 * 64 * 64, 2048)
-        self.backend_liner1 = nn.Linear(2048, 256)
-        self.output_liner = nn.Linear(256, 3)
+        self.input_liner = nn.Linear(32 * 64 * 64, 128)
+        self.output_liner = nn.Linear(128, 3)
 
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
-        logging.info("Starting conv1...")
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.pool(self.relu(x))
 
-        logging.info("Starting conv2...")
         x = self.conv2(x)
         x = self.bn2(x)
         x = self.pool(self.relu(x))
@@ -47,19 +45,14 @@ class NoMaskModel(nn.Module):
         # Выравнивание тензора перед подачей на полносвязный слой
         x = x.view(-1, 32 * 64 * 64)
 
-        logging.info("Starting liner1...")
         x = self.relu(self.input_liner(x))
         x = self.dropout(x)
 
-        logging.info("Starting liner2...")
-        x = self.relu(self.backend_liner1(x))
-        x = self.dropout(x)
-
-        logging.info("Starting liner3...")
         x = self.output_liner(x)
 
         # Применение Softmax для получения вероятностного распределения
         x = self.softmax(x)
+
         return x
 
 
