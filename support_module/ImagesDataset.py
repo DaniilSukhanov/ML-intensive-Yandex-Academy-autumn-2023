@@ -32,6 +32,7 @@ class ImageToImageDataset(Dataset):
         else:
             return input_image
 
+
 class ImageToNumDataset(Dataset):
     def __init__(self, img_dir, transform=None, answers_file=None):
         self.img_dir = img_dir
@@ -44,6 +45,7 @@ class ImageToNumDataset(Dataset):
             self.img_labels = None
         
         self.image_filenames = [file for file in os.listdir(img_dir) if file.endswith('.png')]
+        self.image_filenames.sort(key=lambda x: int(x.replace("img_", "", 1).replace(".png", "", 1)))
 
     def __len__(self):
         return len(self.image_filenames)
