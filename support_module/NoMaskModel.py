@@ -2,6 +2,23 @@ from torch import nn
 
 
 class NoMaskModel(nn.Module):
+    """
+    Модель нейронной сети для обработки изображений.
+
+    Attributes:
+        dropout (nn.Dropout): Операция dropout для регуляризации.
+        input_liner (nn.Linear): Полносвязный слой для обработки входных данных.
+        softmax (nn.Softmax): Функция Softmax для получения вероятностного распределения.
+        output_liner (nn.Linear): Выходной полносвязный слой модели.
+        relu (nn.ReLU): Функция активации ReLU для извлечения признаков.
+        pool (nn.MaxPool2d): Операция пулинга для уменьшения размерности данных.
+        conv1 (nn.Conv2d): Первый сверточный слой.
+        conv2 (nn.Conv2d): Второй сверточный слой.
+        b1 (nn.BatchNorm2d): Нормализация для первого сверточного слоя.
+        b2 (nn.BatchNorm2d): Нормализация для второго сверточного слоя.
+        backend_liner1 (nn.Linear): Внутренний полносвязный слой.
+    """
+
     dropout: nn.Dropout
     input_liner: nn.Linear
     softmax: nn.Softmax
